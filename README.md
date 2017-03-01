@@ -17,6 +17,7 @@ Root privilages needed for all configuration commands
     ip link add name if0 type veth peer name if1
     ip link set if1 netns 1
     ip link set if0 master net_bringe0
+    ip link set if0 up
     
 ## Configure network in container
 
