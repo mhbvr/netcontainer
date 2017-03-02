@@ -64,6 +64,35 @@ function create_container {
     ip netns exec $CNT_NAME ip link set $CNT_IFACE up
 }
 
+function list_containers {
+	CNTS=$(ip netns list | awk '{ print $1 }')
+	for CNT in $CNTS
+	do
+		IP=$(ip netns exec $CNT ip addr show ${CNT}_cnt 2>/dev/null | awk '/inet / { print $2 }')
+		if [[ "x$IP" != "x" ]]
+		then
+			echo $CNT $IP
+		fi
+	done
+}
+
+function is_container {
+	CNT_NAME=$1
+	for CNT in $(ip netns list | awk '{ print $1 }')
+	do
+		if [[ $CNT == $CNT_NAME ]]
+		then
+			return 0
+		fi
+	done
+	return 1
+}
+
+function delete_container {
+	CNT_NAME=$1
+	ip netns delete $CNT_NAME
+	
+}
 
 function run_command {
     CNT_NAME=$1
@@ -75,11 +104,13 @@ function run_command {
 function print_usage {
     echo "netcontaner.sh <command> [args]"
     echo "Possible commands are:"
-    echo "    create_bridge"
+    echo "    create_bridge IPADDR"
     echo "    delete_bridge"
-    echo "    create_container"
-    echo "    delete_container"
-    echo "    run"
+    echo "    create_container NAME IPADDR"
+    echo "    delete_container NAME"
+    echo "    list"
+    echo "    show"
+    echo "    run CONTAINER_NAME COMMAND"
     echo "    help"
 }
 
@@ -106,6 +137,13 @@ case $COMMAND in
         create_bridge $BRIDGE $1 $NET_PREFIX
     ;;
     delete_bridge)
+		NUM_C=$(list_containers | wc -l)
+		if [[ $NUM_C -ne 0 ]]
+		then
+			echo "Delete these containers first:"
+			list_containers
+			exit 1
+		fi
         delete_bridge $BRIDGE
     ;;
     create_container)
@@ -116,7 +154,41 @@ case $COMMAND in
         fi
         create_container $1 $2 $NET_PREFIX $BRIDGE
     ;;
-    delete_container) 
+	list)
+		list_containers
+	;;
+	show)
+		echo "Bridge:"
+		if ip addr show $BRIDGE 1>/dev/null 2>&1
+		then
+			echo "$BRIDGE $(ip addr show $BRIDGE 2>/dev/null | awk '/inet / { print $2 }')"
+		else
+			echo "Not configured"
+		fi
+		echo "Containers:"
+		list_containers
+	;;
+    delete_container)
+        if [[ $# -ne 1 ]]
+            then
+            echo "You need to provide container name only"
+            exit 1
+        fi
+
+		if ! is_container $1
+		then
+			echo "Container $1 not exist"
+			exit 1
+		fi
+
+		N_PIDS=$(ip netns pids $1| wc -l)
+		if [[ $N_PIDS -ne 0 ]]
+		then
+			echo "Terminate this processes first:"
+			ip netns pids $1
+			exit 1
+		fi
+		delete_container $1
     ;;
     run)
         if [[ $# -lt 2 ]]
