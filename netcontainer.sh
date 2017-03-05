@@ -204,7 +204,7 @@ case $COMMAND in
         print_usage
     ;;
     *)
-        echo "Unknown command: " $COMMAND
+        echo "Unknown command: $COMMAND"
         print_usage
         exit 1
     ;;
