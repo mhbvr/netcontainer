@@ -1,9 +1,76 @@
 # netcontainer
-Script to simplify network namespaces management
 
-# Work by hand 
+Script to simplify network namespaces management. Script base on `ip netns` tool. It helps to create/delete bridge, network namespaces with veth interface connected to bringe and run commands inside this containers. 
 
-Root privilages needed for all configuration commands
+## Do we need this? Maybe Docker can help?
+
+This script is very simple and lightweight. In many cases we do not need image with separate filesystem, we just need to run applications on different "hosts", we do not need another variants of isolation. Docker is overkill for this tasks. 
+
+## Usage
+
+All commands need supeuser privilage.
+
+Create bridge on local machine.
+
+    $ sudo ./netcontainer.sh create_bridge 10.0.0.1
+    $ sudo ./netcontainer.sh show
+    Bridge:
+    cnt_bridge 10.0.0.1/24
+    Containers:
+
+Bridge `cnt_bridge` is created. Name of bridge is hardcoded in script. Network prefix is also hardcoded.
+
+    $ ip addr show cnt_bridge
+    11: cnt_bridge: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UNKNOWN group default qlen 1000
+        link/ether 1a:37:10:68:e8:15 brd ff:ff:ff:ff:ff:ff
+        inet 10.0.0.1/24 scope global cnt_bridge
+           valid_lft forever preferred_lft forever
+        inet6 fe80::1837:10ff:fe68:e815/64 scope link 
+           valid_lft forever preferred_lft forever
+
+Create a container.
+
+    $ sudo ./netcontainer.sh create_container container 10.0.0.2
+    $ sudo ./netcontainer.sh show
+    Bridge:
+    cnt_bridge 10.0.0.1/24
+    Containers:
+    container 10.0.0.2/24
+
+    
+Run program inside container. Program run with superuser privilages.
+
+    $ sudo ./netcontainer.sh run container ip addr show
+    1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1
+        link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+        inet 127.0.0.1/8 scope host lo
+           valid_lft forever preferred_lft forever
+        inet6 ::1/128 scope host 
+           valid_lft forever preferred_lft forever
+    12: container_cnt@if13: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+        link/ether 82:19:e1:c5:aa:62 brd ff:ff:ff:ff:ff:ff link-netnsid 0
+        inet 10.0.0.2/24 scope global container_cnt
+           valid_lft forever preferred_lft forever
+        inet6 fe80::8019:e1ff:fec5:aa62/64 scope link 
+           valid_lft forever preferred_lft forever
+
+Help on commands.
+
+    $ sudo ./netcontainer.sh help
+    netcontaner.sh <command> [args]
+    Possible commands are:
+        create_bridge IPADDR
+        delete_bridge
+        create_container NAME IPADDR
+        delete_container NAME
+        list
+        show
+        run CONTAINER_NAME COMMAND
+        help
+
+## How it works?
+
+This is an exmaple how to create bridge and network container with raw `ip` tools. Root privilages needed for all configuration commands.
 
 ## Set up bridge
 
