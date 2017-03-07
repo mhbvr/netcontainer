@@ -97,7 +97,7 @@ function delete_container {
 function run_command {
     CNT_NAME=$1
     shift
-    ip netns exec $CNT_NAME $@
+    ip netns exec $CNT_NAME "$@"
 }
 
 
